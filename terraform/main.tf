@@ -49,13 +49,12 @@ resource "azurerm_kubernetes_cluster" "aks" {
   location            = data.azurerm_resource_group.main.location
   resource_group_name = data.azurerm_resource_group.main.name
   dns_prefix          = "ecomk8s"
-
   node_resource_group = "rg-ecom-aks-nodes"
 
   default_node_pool {
     name           = "default"
     node_count     = 1
-    vm_size        = "Standard_DS2_v2" # Recommended for testing
+    vm_size        = "Standard_B2s"
     vnet_subnet_id = azurerm_subnet.aks_subnet.id
   }
 
