@@ -5,7 +5,6 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # Connection & Resource Details
   armConnection: 'arm-connection'
   resourceGroup: 'VisualStudioOnline-B7676031D19941C29CB021209999B63D'
   storageAccount: 'corvitterraformstate'
@@ -15,16 +14,15 @@ variables:
 stages:
 - stage: Infra_Provisioning
   displayName: 'Stage 5: Terraform Infrastructure'
+  # Only run this if we are NOT trying to destroy
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual')) 
   jobs:
   - job: TerraformApply
-    displayName: 'Provision AKS and Networking'
     steps:
-    # 1. Install Terraform on the Agent
     - task: TerraformInstaller@0
       inputs:
         terraformVersion: 'latest'
 
-    # 2. Terraform Init (Connects to your Blob Storage)
     - task: TerraformTaskV4@4
       displayName: 'Terraform Init'
       inputs:
@@ -37,16 +35,6 @@ stages:
         backendAzureRmContainerName: $(container)
         backendAzureRmKey: $(tfstateKey)
 
-    # 3. Terraform Plan (Validation Step)
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Plan'
-      inputs:
-        provider: 'azurerm'
-        command: 'plan'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        environmentServiceNameAzureRM: $(armConnection)
-
-    # 4. Terraform Apply (The Actual Build)
     - task: TerraformTaskV4@4
       displayName: 'Terraform Apply'
       inputs:
@@ -55,66 +43,12 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
         environmentServiceNameAzureRM: $(armConnection)
         commandOptions: '-auto-approve'
-    trigger:
-- main
 
-pool:
-  vmImage: 'ubuntu-latest'
-
-variables:
-  # Connection & Resource Details
-  armConnection: 'arm-connection'
-  resourceGroup: 'VisualStudioOnline-B7676031D19941C29CB021209999B63D'
-  storageAccount: 'corvitterraformstate'
-  container: 'tfstate'
-  tfstateKey: 'terraform.tfstate'
-
-stages:
-- stage: Infra_Provisioning
-  displayName: 'Stage 5: Terraform Infrastructure'
-  jobs:
-  - job: TerraformApply
-    displayName: 'Provision AKS and Networking'
-    steps:
-    # 1. Install Terraform on the Agent
-    - task: TerraformInstaller@0
-      inputs:
-        terraformVersion: 'latest'
-
-    # 2. Terraform Init (Connects to your Blob Storage)
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Init'
-      inputs:
-        provider: 'azurerm'
-        command: 'init'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        backendServiceArm: $(armConnection)
-        backendAzureRmResourceGroupName: $(resourceGroup)
-        backendAzureRmStorageAccountName: $(storageAccount)
-        backendAzureRmContainerName: $(container)
-        backendAzureRmKey: $(tfstateKey)
-
-    # 3. Terraform Plan (Validation Step)
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Plan'
-      inputs:
-        provider: 'azurerm'
-        command: 'plan'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        environmentServiceNameAzureRM: $(armConnection)
-
-    # 4. Terraform Apply (The Actual Build)
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Apply'
-      inputs:
-        provider: 'azurerm'
-        command: 'apply'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        environmentServiceNameAzureRM: $(armConnection)
-        commandOptions: '-auto-approve'
-    
 - stage: Destroy_Infra
   displayName: 'Destroy Infrastructure'
+  # SAFETY CHECK: This stage will ONLY run if you manually start the pipeline
+  # and set a variable or if you specifically target this stage.
+  condition: eq(variables['DestroyMode'], 'true')
   jobs:
   - job: TerraformDestroy
     steps:
@@ -128,11 +62,11 @@ stages:
         provider: 'azurerm'
         command: 'init'
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        backendServiceArm: 'arm-connection'
-        backendAzureRmResourceGroupName: 'VisualStudioOnline-B7676031D19941C29CB021209999B63D'
-        backendAzureRmStorageAccountName: 'corvitterraformstate'
-        backendAzureRmContainerName: 'tfstate'
-        backendAzureRmKey: 'terraform.tfstate'
+        backendServiceArm: $(armConnection)
+        backendAzureRmResourceGroupName: $(resourceGroup)
+        backendAzureRmStorageAccountName: $(storageAccount)
+        backendAzureRmContainerName: $(container)
+        backendAzureRmKey: $(tfstateKey)
 
     - task: TerraformTaskV4@4
       displayName: 'Terraform Destroy'
@@ -140,5 +74,5 @@ stages:
         provider: 'azurerm'
         command: 'destroy'
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        environmentServiceNameAzureRM: 'arm-connection'
+        environmentServiceNameAzureRM: $(armConnection)
         commandOptions: '-auto-approve'
