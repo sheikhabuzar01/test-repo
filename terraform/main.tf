@@ -54,22 +54,25 @@ resource "azurerm_kubernetes_cluster" "aks" {
   default_node_pool {
     name           = "default"
     node_count     = 1
-    vm_size        = "standard_b2s_v2"
+    
+    # SWITCHING TO D-SERIES (More likely to have quota)
+    vm_size        = "Standard_D2as_v5" 
+    
     vnet_subnet_id = azurerm_subnet.aks_subnet.id
   }
 
-  # Cluster identity used for management
   identity {
     type = "SystemAssigned"
   }
 
   network_profile {
-    network_plugin    = "azure"
-    load_balancer_sku = "standard"
+    network_plugin     = "azure"
+    load_balancer_sku  = "standard"
     service_cidr       = "172.16.0.0/16"
     dns_service_ip     = "172.16.0.10"
-    docker_bridge_cidr = "172.17.0.1/16"
+    # docker_bridge_cidr removed to fix warnings
   }
+}
 
   tags = {
     Environment = "Production"
