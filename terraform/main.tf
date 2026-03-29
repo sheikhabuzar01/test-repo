@@ -56,7 +56,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     node_count     = 1
     
     # SWITCHING TO D-SERIES (More likely to have quota)
-    vm_size        = "Standard_D2as_v5" 
+    vm_size        = "Standard_A2_v2" 
     
     vnet_subnet_id = azurerm_subnet.aks_subnet.id
   }
