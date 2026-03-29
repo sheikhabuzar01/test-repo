@@ -44,33 +44,7 @@ stages:
         environmentServiceNameAzureRM: $(armConnection)
         commandOptions: '-auto-approve'
 
-- stage: Destroy_Infra
-  displayName: 'Destroy Infrastructure'
-  # SAFETY CHECK: This stage will ONLY run if you manually start the pipeline
-  # and set a variable or if you specifically target this stage.
-  condition: eq(variables['DestroyMode'], 'true')
-  jobs:
-  - job: TerraformDestroy
-    steps:
-    - task: TerraformInstaller@0
-      inputs:
-        terraformVersion: 'latest'
-
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Init'
-      inputs:
-        provider: 'azurerm'
-        command: 'init'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        backendServiceArm: $(armConnection)
-        backendAzureRmResourceGroupName: $(resourceGroup)
-        backendAzureRmStorageAccountName: $(storageAccount)
-        backendAzureRmContainerName: $(container)
-        backendAzureRmKey: $(tfstateKey)
-
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Destroy'
-      inputs:
+  
         provider: 'azurerm'
         command: 'destroy'
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
