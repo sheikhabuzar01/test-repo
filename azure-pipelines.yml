@@ -1,19 +1,57 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+- 
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  # Connection & Resource Details
+  armConnection: 'arm-connection'
+  resourceGroup: 'VisualStudioOnline-B7676031D19941C29CB021209999B63D'
+  storageAccount: 'corvitterraformstate'
+  container: 'tfstate'
+  tfstateKey: 'terraform.tfstate'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+- stage: Infra_Provisioning
+  displayName: 'Stage 5: Terraform Infrastructure'
+  jobs:
+  - job: TerraformApply
+    displayName: 'Provision AKS and Networking'
+    steps:
+    # 1. Install Terraform on the Agent
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: 'latest'
+
+    # 2. Terraform Init (Connects to your Blob Storage)
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        backendServiceArm: $(armConnection)
+        backendAzureRmResourceGroupName: $(resourceGroup)
+        backendAzureRmStorageAccountName: $(storageAccount)
+        backendAzureRmContainerName: $(container)
+        backendAzureRmKey: $(tfstateKey)
+
+    # 3. Terraform Plan (Validation Step)
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Plan'
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        environmentServiceNameAzureRM: $(armConnection)
+
+    # 4. Terraform Apply (The Actual Build)
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Apply'
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        environmentServiceNameAzureRM: $(armConnection)
+        commandOptions: '-auto-approve'
