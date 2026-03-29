@@ -72,7 +72,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     dns_service_ip     = "172.16.0.10"
     # docker_bridge_cidr removed to fix warnings
   }
-}
+
 
   tags = {
     Environment = "Production"
